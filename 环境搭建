@@ -1,0 +1,103 @@
+一、开发环境如下
+
+1.主机环境 ubuntu16.0.4
+
+2.fabric选择fabric-samples-1.0.6版本， https://github.com/hyperledger/fabric-samples.git
+
+3.下载二进制文件 hyperledger-fabric-linux-amd64-1.0.5.tar.gz;选择这版本的，两个版本的要相互匹配，不然会导致不兼容出现问题。
+
+将其bin目录拷贝到 fabric-samples-1.0.6/ 目录下
+
+二、主机切换到root用户;
+
+进入下载的fabric目录： younger@kaichangZhu:~/blockchain$ cd fabric-samples-1.0.6/ younger@kaichangZhu:~/blockchain/fabric-samples-1.0.6$ cd first-network/ younger@kaichangZhu:~/blockchain/fabric-samples-1.0.6/first-network$ pwd /home/younger/blockchain/fabric-samples-1.0.6/first-network
+
+运行 ./byfn.sh -m generate;建议在创建网络的时候先关闭网络，先执行 $ ./byfn.sh -m down 在执行$ ./byfn.sh -m generate 出现如下信息:
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ./byfn.sh -m generate Generating certs and genesis block for with channel 'mychannel' and CLI timeout of '10' Continue (y/n)? yproceeding .../home/younger/blockchain/fabric-samples-1.0.6/first-network/../bin/cryptogen##########################################################
+
+Generate certificates using cryptogen tool
+org1.example.com org2.example.com/home/younger/blockchain/fabric-samples-1.0.6/first-network/../bin/configtxgen################################################################### Generating Orderer Genesis block ############## ##########################################################2018-06-03 23:46:26.434 CST [common/configtx/tool] main -> INFO 001 Loading configuration 2018-06-03 23:46:26.482 CST [common/configtx/tool] doOutputBlock -> INFO 002 Generating genesis block 2018-06-03 23:46:26.484 CST [common/configtx/tool] doOutputBlock -> INFO 003 Writing genesis block
+
+#################################################################
+
+Generating channel configuration transaction 'channel.tx'
+################################################################# 2018-06-03 23:46:26.502 CST [common/configtx/tool] main -> INFO 001 Loading configuration 2018-06-03 23:46:26.507 CST [common/configtx/tool] doOutputChannelCreateTx -> INFO 002 Generating new channel configtx 2018-06-03 23:46:26.508 CST [common/configtx/tool] doOutputChannelCreateTx -> INFO 003 Writing new channel tx
+
+################################################################# ####### Generating anchor peer update for Org1MSP ########## ################################################################# 2018-06-03 23:46:26.524 CST [common/configtx/tool] main -> INFO 001 Loading configuration 2018-06-03 23:46:26.530 CST [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 002 Generating anchor peer update 2018-06-03 23:46:26.531 CST [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 003 Writing anchor peer update
+
+################################################################# ####### Generating anchor peer update for Org2MSP ########## ################################################################# 2018-06-03 23:46:26.555 CST [common/configtx/tool] main -> INFO 001 Loading configuration 2018-06-03 23:46:26.558 CST [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 002 Generating anchor peer update 2018-06-03 23:46:26.559 CST [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 003 Writing anchor peer update
+
+生成初始区块：
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ../bin/cryptogen generate --config=./crypto-config.yaml
+
+出现如下提示：
+
+org1.example.com
+
+org2.example.com
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# export FABRIC_CFG_PATH=$PWD
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+
+生生成应用用通道的配置信息：
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# export CHANNEL_NAME=mychannel
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
+
+生生成锚节点配置更更新文文件
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ../bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org1MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org1MSP
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# ../bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeers Update ./channel-artifacts/Org2MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org2MSP
+
+操作网网络
+
+编辑 docker-compose-cli.yaml ,注释到 command 命令 working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer # command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME} ${DELAY}; sleep $TIMEOUT'//注释掉该句信息。
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# CHANNEL_NAME=$CHANNEL_NAME TIMEOUT=600 docker-compose -f dock er-compose-cli.yaml up -d
+
+创建和加入入通道
+
+进入入 docker 容器器
+
+root@kaichangZhu:/home/younger/blockchain/fabric-samples-1.0.6/first-network# $ docker exec -it cli bash
+
+创建通道
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# export CHANNEL_NAME=mychannel
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f . /channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrgani zations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+加入入通道
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer channel join -b mychannel.block
+
+链上代码 (链码)
+
+按装链码: root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f . /channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrgani zations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+实例例化链码
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PE ER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example .com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MS P.member','Org2MSP.member')"
+
+等待退出。
+
+查询
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["query","a "]}'
+
+查询结果： 2018-06-03 16:09:21.553 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: D16E93253F3F62C27C48648DA72A7984F088C9B16F9202BA393EFD4FFD768985
+
+Query Result: 100 2018-06-03 16:09:21.563 UTC [main] main -> INFO 008 Exiting.....
+
+转账：
+
+root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TL S_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/ msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+
+查询 a的余额进行验证 root@fcbfc1e75ee4:/opt/gopath/src/github.com/hyperledger/fabric/peer# peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["query","a "]}'
+
+到此本地环境搭建完毕！
